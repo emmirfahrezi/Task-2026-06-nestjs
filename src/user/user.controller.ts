@@ -7,11 +7,22 @@ import { UserResponse } from './dto/user-response.dto';
 // Ini letak import ZodValidationPipe (Detektor X-Ray kita)
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 
+/**
+ * Controller untuk menangani semua rute yang berkaitan dengan entitas User.
+ * Berperan sebagai pintu masuk utama untuk operasi CRUD User.
+ */
 @ApiTags('Users')
 @Controller('/users')
 export class UserController {
   constructor(private userService: UserService) {}
 
+  /**
+   * Membuat data user baru di dalam sistem.
+   * Akan divalidasi oleh ZodValidationPipe sebelum diproses.
+   * 
+   * @param request Data user yang akan dibuat
+   * @returns Respons berhasil beserta data user yang baru dibuat
+   */
   @Post()
   @HttpCode(201)
   @ApiOperation({ summary: 'Membuat User baru' })
@@ -27,6 +38,12 @@ export class UserController {
     };
   }
 
+  /**
+   * Mengambil seluruh daftar user yang ada di database.
+   * Termasuk relasinya dengan entitas Divisi.
+   * 
+   * @returns Respons berhasil beserta array daftar user
+   */
   @Get()
   @HttpCode(200)
   @ApiOperation({ summary: 'Mengambil semua User (Lengkap dengan Divisi-nya)' })
@@ -40,6 +57,12 @@ export class UserController {
     };
   }
 
+  /**
+   * Mengambil rincian spesifik dari satu user berdasarkan ID.
+   * 
+   * @param userId ID unik user
+   * @returns Respons berhasil beserta data user terkait
+   */
   @Get('/:userId')
   @HttpCode(200)
   @ApiOperation({ summary: 'Mengambil satu User berdasarkan ID' })
@@ -53,6 +76,14 @@ export class UserController {
     };
   }
 
+  /**
+   * Memperbarui data user yang sudah ada.
+   * Hanya kolom yang disediakan di request body yang akan diperbarui.
+   * 
+   * @param userId ID unik user yang akan diupdate
+   * @param request Data pembaruan
+   * @returns Respons berhasil beserta data user yang telah diupdate
+   */
   @Put('/:userId')
   @HttpCode(200)
   @ApiOperation({ summary: 'Mengupdate User' })
@@ -71,6 +102,12 @@ export class UserController {
     };
   }
 
+  /**
+   * Menghapus data user dari sistem secara permanen.
+   * 
+   * @param userId ID unik user yang akan dihapus
+   * @returns Respons berhasil tanpa data
+   */
   @Delete('/:userId')
   @HttpCode(200)
   @ApiOperation({ summary: 'Menghapus User' })
