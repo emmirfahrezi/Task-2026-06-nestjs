@@ -7,11 +7,22 @@ import { DivisiResponse } from './dto/divisi-response.dto';
 // Ini letak import ZodValidationPipe (Detektor X-Ray kita)
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 
+/**
+ * Controller untuk menangani semua rute yang berkaitan dengan entitas Divisi.
+ * Berperan sebagai pintu masuk utama untuk operasi CRUD Divisi.
+ */
 @ApiTags('Divisi')
 @Controller('/divisi')
 export class DivisiController {
   constructor(private divisiService: DivisiService) {}
 
+  /**
+   * Membuat data divisi baru di dalam sistem.
+   * Akan divalidasi oleh ZodValidationPipe sebelum diproses.
+   * 
+   * @param request Data divisi yang akan dibuat
+   * @returns Respons berhasil beserta data divisi yang baru dibuat
+   */
   @Post()
   @HttpCode(201)
   @ApiOperation({ summary: 'Membuat Divisi baru' })
@@ -27,6 +38,11 @@ export class DivisiController {
     };
   }
 
+  /**
+   * Mengambil seluruh daftar divisi yang ada di database.
+   * 
+   * @returns Respons berhasil beserta array daftar divisi
+   */
   @Get()
   @HttpCode(200)
   @ApiOperation({ summary: 'Mengambil semua Divisi' })
@@ -40,6 +56,12 @@ export class DivisiController {
     };
   }
 
+  /**
+   * Mengambil rincian spesifik dari satu divisi berdasarkan ID.
+   * 
+   * @param divisiId ID unik divisi
+   * @returns Respons berhasil beserta data divisi terkait
+   */
   @Get('/:divisiId')
   @HttpCode(200)
   @ApiOperation({ summary: 'Mengambil satu Divisi berdasarkan ID' })
@@ -53,6 +75,14 @@ export class DivisiController {
     };
   }
 
+  /**
+   * Memperbarui data divisi yang sudah ada.
+   * Hanya kolom yang disediakan di request body yang akan diperbarui.
+   * 
+   * @param divisiId ID unik divisi yang akan diupdate
+   * @param request Data pembaruan
+   * @returns Respons berhasil beserta data divisi yang telah diupdate
+   */
   @Put('/:divisiId')
   @HttpCode(200)
   @ApiOperation({ summary: 'Mengupdate Divisi' })
@@ -71,6 +101,12 @@ export class DivisiController {
     };
   }
 
+  /**
+   * Menghapus data divisi dari sistem secara permanen.
+   * 
+   * @param divisiId ID unik divisi yang akan dihapus
+   * @returns Respons berhasil tanpa data
+   */
   @Delete('/:divisiId')
   @HttpCode(200)
   @ApiOperation({ summary: 'Menghapus Divisi' })

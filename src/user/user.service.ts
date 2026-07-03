@@ -6,15 +6,29 @@ import { CreateUserRequest } from './dto/create-user.dto';
 import { UpdateUserRequest } from './dto/update-user.dto';
 import { UserResponse } from './dto/user-response.dto';
 import { Divisi, User } from '@prisma/client';
+import { NotificationGateway } from '../common/notification.gateway';
 // ValidationService sudah tidak dipakai di sini karena sudah dipindah ke Pipe (Controller)
 
+/**
+ * Service yang bertanggung jawab atas logika bisnis (Business Logic) 
+ * untuk entitas User. Menghubungkan Controller dengan Prisma ORM 
+ * dan mengirim notifikasi via WebSocket.
+ */
 @Injectable()
 export class UserService {
   constructor(
     private prismaService: PrismaService,
-    @Inject(WINSTON_MODULE_PROVIDER) private logger: Logger
+    @Inject(WINSTON_MODULE_PROVIDER) private logger: Logger,
+    private notificationGateway: NotificationGateway
   ) {}
 
+  /**
+   * Mengubah objek entitas database mentah (Prisma) 
+   * menjadi format DTO (Data Transfer Object) yang rapi.
+   * 
+   * @param user Entitas user dari database (termasuk relasi Divisi)
+   * @returns UserResponse DTO
+   */
   toUserResponse(user: User & { divisi?: Divisi }): UserResponse {
     return {
       id: user.id,
@@ -29,6 +43,13 @@ export class UserService {
     };
   }
 
+  /**
+   * Menyimpan data user baru ke database, memastikan divisi-nya ada,
+   * dan memancarkan notifikasi real-time via WebSocket.
+   * 
+   * @param request Data user baru (sudah divalidasi)
+   * @returns UserResponse data yang baru disimpan
+   */
   async create(request: CreateUserRequest): Promise<UserResponse> {
     this.logger.info(`Mulai memproses pembuatan user: ${request.name}`);
     // Data yang masuk ke 'request' sudah pasti valid karena sudah melewati ZodValidationPipe di Controller
@@ -49,9 +70,19 @@ export class UserService {
       },
     });
 
-    return this.toUserResponse(user);
+    const response = this.toUserResponse(user);
+    this.notificationGateway.kirimNotifikasi('NEW_USER', 'User baru telah bergabung', response);
+    
+    return response;
   }
 
+  /**
+   * Mencari dan mengembalikan satu user spesifik berdasarkan ID.
+   * Akan melempar NotFoundException jika tidak ditemukan.
+   * 
+   * @param userId ID user yang dicari
+   * @returns UserResponse data user yang ditemukan
+   */
   async get(userId: number): Promise<UserResponse> {
     const user = await this.prismaService.user.findUnique({
       where: {
@@ -66,6 +97,14 @@ export class UserService {
     return this.toUserResponse(user);
   }
 
+  /**
+   * Melakukan pembaruan (update) terhadap data user yang ada.
+   * Memastikan user dan divisi tujuan (jika diubah) benar-benar ada.
+   * 
+   * @param userId ID user yang akan diupdate
+   * @param request Data pembaruan
+   * @returns UserResponse data yang telah diperbarui
+   */
   async update(userId: number, request: UpdateUserRequest): Promise<UserResponse> {
     // Data yang masuk ke 'request' sudah pasti valid karena sudah melewati ZodValidationPipe di Controller
     const user = await this.prismaService.user.findUnique({
@@ -103,6 +142,13 @@ export class UserService {
     return this.toUserResponse(updated);
   }
 
+  /**
+   * Menghapus user beserta data yang terkait di dalamnya.
+   * Akan melempar NotFoundException jika user tidak ditemukan sebelum dihapus.
+   * 
+   * @param userId ID user yang akan dihapus
+   * @returns true jika berhasil dihapus
+   */
   async remove(userId: number): Promise<boolean> {
     const user = await this.prismaService.user.findUnique({
       where: {
@@ -123,6 +169,12 @@ export class UserService {
     return true;
   }
 
+  /**
+   * Mengambil semua daftar user yang terdaftar beserta data 
+   * divisi tempat mereka bernaung.
+   * 
+   * @returns Array dari UserResponse
+   */
   async list(): Promise<UserResponse[]> {
     const users = await this.prismaService.user.findMany({
       include: {
