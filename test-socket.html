@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Urbansolv WebSocket Tester</title>
+    <!-- Load Socket.io Client -->
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; background-color: #f0f2f5; }
+        .container { max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        h2 { color: #1a73e8; }
+        #status { display: inline-block; padding: 5px 10px; border-radius: 4px; font-weight: bold; }
+        .connected { background-color: #d4edda; color: #155724; }
+        .disconnected { background-color: #f8d7da; color: #721c24; }
+        .notif-box { margin-top: 10px; padding: 15px; border-left: 4px solid #1a73e8; background: #e8f0fe; animation: fadeIn 0.5s; }
+        pre { background: #333; color: #fff; padding: 10px; border-radius: 4px; overflow-x: auto; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>📡 WebSocket Live Monitor</h2>
+    <p>Status Koneksi: <span id="status" class="disconnected">Terputus</span></p>
+    
+    <hr>
+    
+    <h3>🔴 Live Event Feed:</h3>
+    <div id="messages">
+        <p style="color: gray;">Menunggu notifikasi (Coba buat Divisi atau User baru via Postman/Swagger)...</p>
+    </div>
+</div>
+
+<script>
+    // Koneksi ke server NestJS
+    const socket = io('http://localhost:3000');
+    
+    const statusEl = document.getElementById('status');
+    const messagesEl = document.getElementById('messages');
+
+    // Event: Berhasil terhubung
+    socket.on('connect', () => {
+        statusEl.textContent = 'Terhubung (ID: ' + socket.id + ')';
+        statusEl.className = 'connected';
+    });
+
+    // Event: Terputus
+    socket.on('disconnect', () => {
+        statusEl.textContent = 'Terputus';
+        statusEl.className = 'disconnected';
+    });
+
+    // Event Utama: Menerima 'notifikasiBaru' dari Server
+    socket.on('notifikasiBaru', (payload) => {
+        // Hilangkan pesan "Menunggu..." jika ini pesan pertama
+        if (messagesEl.innerHTML.includes('Menunggu')) {
+            messagesEl.innerHTML = '';
+        }
+
+        // Buat kotak notifikasi baru
+        const div = document.createElement('div');
+        div.className = 'notif-box';
+        
+        div.innerHTML = `
+            <strong>Tipe:</strong> ${payload.tipe} <br>
+            <strong>Pesan:</strong> ${payload.pesan} <br>
+            <small style="color:gray;">Waktu: ${new Date(payload.waktu).toLocaleTimeString()}</small>
+            <pre>${JSON.stringify(payload.data, null, 2)}</pre>
+        `;
+
+        // Tambahkan ke paling atas
+        messagesEl.prepend(div);
+    });
+</script>
+
+</body>
+</html>
