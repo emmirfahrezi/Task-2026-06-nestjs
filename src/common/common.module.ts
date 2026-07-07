@@ -1,11 +1,12 @@
 import { Global, Module } from '@nestjs/common';
-import { PrismaService } from './prisma.service';
+import { PrismaService } from './services/prisma.service';
 import { WinstonModule } from 'nest-winston';
 import * as winston from 'winston';
-import { ValidationService } from './validation.service';
-import { APP_FILTER } from '@nestjs/core';
-import { ErrorFilter } from './error.filter';
-import { NotificationGateway } from './notification.gateway';
+import { ValidationService } from './services/validation.service';
+import { APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
+import { ErrorFilter } from './filters/error.filter';
+import { NotificationGateway } from './gateways/notification.gateway';
+import { TransformInterceptor } from './interceptors/transform.interceptor';
 
 @Global()
 @Module({
@@ -21,6 +22,10 @@ import { NotificationGateway } from './notification.gateway';
     {
       provide: APP_FILTER,
       useClass: ErrorFilter,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: TransformInterceptor,
     },
     NotificationGateway,
   ],

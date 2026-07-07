@@ -13,11 +13,11 @@ export class NotificationGateway implements OnGatewayConnection, OnGatewayDiscon
   constructor(@Inject(WINSTON_MODULE_PROVIDER) private logger: Logger) {}
 
   handleConnection(client: Socket) {
-    this.logger.info(`📡 Klien terhubung via WebSocket: ${client.id}`);
+    this.logger.info(`Klien terhubung via WebSocket: ${client.id}`);
   }
 
   handleDisconnect(client: Socket) {
-    this.logger.info(`📡 Klien terputus dari WebSocket: ${client.id}`);
+    this.logger.info(`Klien terputus dari WebSocket: ${client.id}`);
   }
 
   kirimNotifikasi(tipe: string, pesan: string, data: any) {
@@ -28,6 +28,6 @@ export class NotificationGateway implements OnGatewayConnection, OnGatewayDiscon
       data,
       waktu: new Date().toISOString(),
     });
-    this.logger.info(`🔊 Notifikasi di-broadcast: ${pesan}`);
+    this.logger.info(`Notifikasi di-broadcast: ${pesan}`);
   }
 }

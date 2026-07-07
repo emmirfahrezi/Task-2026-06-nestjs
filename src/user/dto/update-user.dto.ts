@@ -10,6 +10,6 @@ export class UpdateUserRequest {
 }
 
 export const UpdateUserValidation = z.object({
-  name: z.string().min(1).max(100).optional(),
-  divisi_id: z.number().int().positive().optional(),
+  name: z.string().min(1, 'Nama user tidak boleh kosong').max(100, 'Nama user maksimal 100 karakter').optional(),
+  divisi_id: z.number().int('ID divisi harus berupa bilangan bulat').positive('ID divisi tidak valid').optional(),
 });

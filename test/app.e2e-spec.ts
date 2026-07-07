@@ -4,7 +4,7 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module';
 
-describe('AppController (e2e)', () => {
+describe('Divisi API (e2e)', () => {
   let app: INestApplication<App>;
 
   beforeEach(async () => {
@@ -16,14 +16,19 @@ describe('AppController (e2e)', () => {
     await app.init();
   });
 
-  it('/ (GET)', () => {
-    return request(app.getHttpServer())
-      .get('/')
-      .expect(200)
-      .expect('Hello World!');
-  });
-
   afterEach(async () => {
     await app.close();
+  });
+
+
+  it('GET /divisi (Seharusnya mereturn array Divisi dan status 200)', async () => {
+    const response = await request(app.getHttpServer())
+      .get('/divisi') // Nembak ke endpoint /divisi
+      .expect(200);   // Memastikan balasan statusnya 200 OK
+
+    // Memastikan format JSON yang kembali sesuai dengan buatan TransformInterceptor
+    expect(response.body.status).toBe('success');
+    expect(response.body.message).toBe('Berhasil mengambil daftar Divisi');
+    expect(Array.isArray(response.body.data)).toBe(true); // Memastikan 'data' adalah Array
   });
 });

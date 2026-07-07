@@ -1,12 +1,12 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { Logger } from 'winston';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
-import { PrismaService } from '../common/prisma.service';
+import { PrismaService } from '../common/services/prisma.service';
 import { CreateUserRequest } from './dto/create-user.dto';
 import { UpdateUserRequest } from './dto/update-user.dto';
 import { UserResponse } from './dto/user-response.dto';
 import { Divisi, User } from '@prisma/client';
-import { NotificationGateway } from '../common/notification.gateway';
+import { NotificationGateway } from '../common/gateways/notification.gateway';
 // ValidationService sudah tidak dipakai di sini karena sudah dipindah ke Pipe (Controller)
 
 /**
@@ -60,7 +60,15 @@ export class UserService {
     });
 
     if (!divisi) {
-      throw new NotFoundException('Divisi not found');
+      throw new NotFoundException('Data Divisi tidak ditemukan');
+    }
+
+    // Cek nama kembar
+    const existingUser = await this.prismaService.user.findFirst({
+      where: { name: request.name },
+    });
+    if (existingUser) {
+      throw new BadRequestException('Mohon maaf, User dengan nama tersebut sudah ada di database');
     }
 
     const user = await this.prismaService.user.create({
@@ -91,7 +99,7 @@ export class UserService {
     });
 
     if (!user) {
-      throw new NotFoundException('User not found');
+      throw new NotFoundException('Data User tidak ditemukan');
     }
 
     return this.toUserResponse(user);
@@ -114,7 +122,7 @@ export class UserService {
     });
 
     if (!user) {
-      throw new NotFoundException('User not found');
+      throw new NotFoundException('Data User tidak ditemukan');
     }
 
     if (request.divisi_id) {
@@ -125,7 +133,20 @@ export class UserService {
       });
 
       if (!divisi) {
-        throw new NotFoundException('Divisi not found');
+        throw new NotFoundException('Data Divisi tidak ditemukan');
+      }
+    }
+
+    // Cek nama kembar saat update
+    if (request.name) {
+      const existingName = await this.prismaService.user.findFirst({
+        where: {
+          name: request.name,
+          id: { not: userId },
+        },
+      });
+      if (existingName) {
+        throw new BadRequestException('Mohon maaf, nama User tersebut sudah digunakan oleh user lain');
       }
     }
 
@@ -139,7 +160,10 @@ export class UserService {
       },
     });
 
-    return this.toUserResponse(updated);
+    const response = this.toUserResponse(updated);
+    this.notificationGateway.kirimNotifikasi('UPDATE_USER', `User ${updated.name} telah diperbarui`, response);
+    
+    return response;
   }
 
   /**
@@ -157,7 +181,7 @@ export class UserService {
     });
 
     if (!user) {
-      throw new NotFoundException('User not found');
+      throw new NotFoundException('Data User tidak ditemukan');
     }
 
     await this.prismaService.user.delete({
@@ -165,6 +189,8 @@ export class UserService {
         id: userId,
       },
     });
+
+    this.notificationGateway.kirimNotifikasi('DELETE_USER', `User ${user.name} telah dihapus`, { id: userId });
 
     return true;
   }

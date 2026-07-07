@@ -6,4 +6,5 @@ import { DivisiController } from './divisi.controller';
   providers: [DivisiService],
   controllers: [DivisiController],
 })
+
 export class DivisiModule {}

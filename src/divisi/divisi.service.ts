@@ -1,10 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../common/prisma.service';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { PrismaService } from '../common/services/prisma.service';
 import { CreateDivisiRequest } from './dto/create-divisi.dto';
 import { UpdateDivisiRequest } from './dto/update-divisi.dto';
 import { DivisiResponse } from './dto/divisi-response.dto';
 import { Divisi } from '@prisma/client';
-import { NotificationGateway } from '../common/notification.gateway';
+import { NotificationGateway } from '../common/gateways/notification.gateway';
 // ValidationService sudah tidak dipakai di sini karena sudah dipindah ke Pipe (Controller)
 
 /**
@@ -40,7 +40,18 @@ export class DivisiService {
    * @returns DivisiResponse data yang baru disimpan
    */
   async create(request: CreateDivisiRequest): Promise<DivisiResponse> {
-    // Data yang masuk ke 'request' sudah pasti valid karena sudah melewati ZodValidationPipe di Controller
+    // 1. Validasi apakah nama divisi sudah pernah ada di database
+    const existingDivisi = await this.prismaService.divisi.findFirst({
+      where: {
+        name: request.name,
+      },
+    });
+
+    if (existingDivisi) {
+      throw new BadRequestException('Mohon maaf, Divisi dengan nama tersebut sudah ditambahkan sebelumnya');
+    }
+
+    // 2. Data yang masuk ke 'request' sudah pasti valid karena sudah melewati ZodValidationPipe di Controller
     const divisi = await this.prismaService.divisi.create({
       data: {
         name: request.name,
@@ -68,7 +79,7 @@ export class DivisiService {
     });
 
     if (!divisi) {
-      throw new NotFoundException('Divisi not found');
+      throw new NotFoundException('Id tidak ditemukan');
     }
 
     return this.toDivisiResponse(divisi);
@@ -83,7 +94,7 @@ export class DivisiService {
    * @returns DivisiResponse data yang telah diperbarui
    */
   async update(divisiId: number, request: UpdateDivisiRequest): Promise<DivisiResponse> {
-    // Data yang masuk ke 'request' sudah pasti valid karena sudah melewati ZodValidationPipe di Controller
+    // 1. Cek apakah divisi yang mau diupdate itu ada
     const divisi = await this.prismaService.divisi.findUnique({
       where: {
         id: divisiId,
@@ -91,9 +102,24 @@ export class DivisiService {
     });
 
     if (!divisi) {
-      throw new NotFoundException('Divisi not found');
+      throw new NotFoundException('Id tidak ditemukan');
     }
 
+    // 2. Jika user mengirimkan nama baru, cek apakah nama itu bentrok dengan divisi LAIN
+    if (request.name) {
+      const existingName = await this.prismaService.divisi.findFirst({
+        where: {
+          name: request.name,
+          id: { not: divisiId }, // Jangan deteksi error jika namanya sama dengan nama dia sendiri saat ini
+        },
+      });
+
+      if (existingName) {
+        throw new BadRequestException('Mohon maaf, nama divisi tersebut sudah digunakan oleh divisi lain');
+      }
+    }
+
+    // 3. Lakukan update
     const updated = await this.prismaService.divisi.update({
       where: {
         id: divisiId,
@@ -103,7 +129,10 @@ export class DivisiService {
       },
     });
 
-    return this.toDivisiResponse(updated);
+    const response = this.toDivisiResponse(updated);
+    this.notificationGateway.kirimNotifikasi('UPDATE_DIVISI', `Divisi ${updated.name} telah diperbarui`, response);
+
+    return response;
   }
 
   /**
@@ -118,10 +147,20 @@ export class DivisiService {
       where: {
         id: divisiId,
       },
+      include: {
+        _count: {
+          select: { users: true }
+        }
+      }
     });
 
     if (!divisi) {
-      throw new NotFoundException('Divisi not found');
+      throw new NotFoundException('Id tidak di temukan');
+    }
+
+    // Pastikan tidak ada user yang masih terhubung dengan divisi ini
+    if (divisi._count.users > 0) {
+      throw new BadRequestException('Tidak bisa menghapus divisi karena masih ada user yang terdaftar di divisi ini');
     }
 
     await this.prismaService.divisi.delete({
@@ -129,6 +168,8 @@ export class DivisiService {
         id: divisiId,
       },
     });
+
+    this.notificationGateway.kirimNotifikasi('DELETE_DIVISI', `Divisi ${divisi.name} telah dihapus`, { id: divisiId });
 
     return true;
   }

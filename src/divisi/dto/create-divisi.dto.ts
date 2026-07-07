@@ -7,5 +7,5 @@ export class CreateDivisiRequest {
 }
 
 export const CreateDivisiValidation = z.object({
-  name: z.string().min(1).max(100),
+  name: z.string().min(1, 'Nama divisi tidak boleh kosong').max(100, 'Nama divisi maksimal 100 karakter'),
 });
